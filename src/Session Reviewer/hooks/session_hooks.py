@@ -32,12 +32,12 @@ def collect_stats():
         FROM revlog WHERE id > ?
         """,
         session_start_ts,
-    )
+    ) or (0, 0, 0, 0)
 
     now = int(time.time() * 1000)
     duration = now - session_start_ts
 
-    total_reviews = sum(counts) if counts else 0
+    total_reviews = sum(c or 0 for c in counts)
 
     return {
         "cards": cards,
