@@ -1,0 +1,14 @@
+{
+  "display_name": "Session Reviewer",
+  "module_name": "Session Reviewer",
+  "repo_name": "Session Reviewer",
+  "ankiweb_id": "",
+  "author": "Unlucky-Life",
+  "conflicts": [],
+  "targets": [
+    "anki21"
+  ],
+  "min_point_version": "",
+  "max_tested_anki_version": "",
+  "ankiweb_conflicts_with_local": false
+}
