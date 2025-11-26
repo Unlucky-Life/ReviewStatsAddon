@@ -38,71 +38,58 @@ jobs:
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
 
-      - name: Build .ankiaddon package
+      - name: Create .ankiaddon package
         run: aab build -d ankiweb
 
       - name: Declare variables
         id: vars
+        shell: bash
         run: |
           echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "module_name=$(basename src/*)" >> $GITHUB_OUTPUT
-          echo "build_name=$(basename build/*.ankiaddon)" >> $GITHUB_OUTPUT
-
-          # Extract version number without 'v'
-          version="${{ github.ref_name }}"
-          version_no_prefix="${version#v}"
+          echo "module_name=$(ls src)" >> $GITHUB_OUTPUT
+          echo "build_name=$(ls build/*.ankiaddon)" >> $GITHUB_OUTPUT
+          
+          # Extract version number without 'v' prefix
+          tag_name="${{ github.ref_name }}"
+          version_no_prefix=$(echo "$tag_name" | sed 's/^v//')
           echo "version_no_prefix=${version_no_prefix}" >> $GITHUB_OUTPUT
 
       - name: Get changelog for this version
-        id: changelog
+        id: get_changelog
         run: |
           version_no_prefix="${{ steps.vars.outputs.version_no_prefix }}"
           changelog_file="assets/changelogs/${version_no_prefix}.md"
-
-          if [[ -f "$changelog_file" ]]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
+          
+          if [ -f "$changelog_file" ]; then
+            echo "changelog_exists=true" >> $GITHUB_OUTPUT
+            # Read changelog content (escape for GitHub Actions)
             {
-              echo "content<<EOF"
+              echo 'changelog<<EOF'
               cat "$changelog_file"
-              echo "EOF"
+              echo 'EOF'
             } >> $GITHUB_OUTPUT
           else
-            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "changelog_exists=false" >> $GITHUB_OUTPUT
+            echo "Warning: Changelog file not found at $changelog_file"
           fi
 
       - name: Get previous tag
-        id: prev
+        id: previoustag
         uses: WyriHaximus/github-action-get-previous-tag@v1
         with:
           fallback: '0.0.0'
-
-      - name: Generate release body
-        id: body
-        run: |
-          if [[ "${{ steps.changelog.outputs.exists }}" == "true" ]]; then
-            echo "text<<EOF" >> $GITHUB_OUTPUT
-            echo "${{ steps.changelog.outputs.content }}" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "---" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.prev.outputs.tag }}...${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          else
-            echo "text<<EOF" >> $GITHUB_OUTPUT
-            echo "No changelog available for this release." >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "---" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.prev.outputs.tag }}...${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
-          fi
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: "${{ steps.vars.outputs.module_name }} v${{ github.ref_name }}"
-          body: ${{ steps.body.outputs.text }}
+          body: |
+            ${{ steps.get_changelog.outputs.changelog_exists == 'true' && steps.get_changelog.outputs.changelog || 'No changelog available for this release.' }}
+            
+            ---
+            
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.previoustag.outputs.tag }}...${{ github.ref_name }}
           files: build/*.ankiaddon
           draft: true
           generate_release_notes: false
