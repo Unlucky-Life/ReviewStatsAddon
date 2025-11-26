@@ -1,10 +1,5 @@
 name: Create Add-on Release
 
-on:
-  push:
-    tags:
-      - '*'
-
 jobs:
   create-release:
     name: Version ${{ github.ref_name }}
