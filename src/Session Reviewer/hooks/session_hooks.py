@@ -76,6 +76,12 @@ def on_reviewer_end():
 
     stats = collect_stats()
 
+    # Skip showing dialog and logging if no reviews were done
+    if stats["total_reviews"] == 0:
+        session_active = False
+        session_start_ts = None
+        return
+
     # Import here to avoid a package import cycle at module import time
     from ..GUI.stats_dialog import StatsDialog
 
